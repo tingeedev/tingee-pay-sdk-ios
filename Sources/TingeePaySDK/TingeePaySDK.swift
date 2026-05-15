@@ -54,10 +54,12 @@ public struct TingeePay {
         from viewController: UIViewController,
         checkoutUrl: URL,
         style: TingeePayPresentationStyle = .fullScreen,
+        themeColor: String? = nil,
         delegate: TingeePayCheckoutDelegate? = nil
     ) {
         let checkoutVC = TingeePayCheckoutViewController(
-            checkoutUrl: checkoutUrl
+            checkoutUrl: checkoutUrl,
+            themeColor: themeColor
         )
         checkoutVC.delegate = delegate
         

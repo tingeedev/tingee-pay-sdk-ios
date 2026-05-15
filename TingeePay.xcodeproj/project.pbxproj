@@ -17,7 +17,7 @@
 		36643B4D43FA037B7A3CF717 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		7F61E1E6CE049D5008058279 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		9DAA5A65A335B4597D86AC26 /* tingee-pay-sdk */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "tingee-pay-sdk"; path = .; sourceTree = SOURCE_ROOT; };
-		9DF195C10A9A55D425B97045 /* TingeePay.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TingeePay.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9DF195C10A9A55D425B97045 /* TingeePay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TingeePay.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CC32D57D3DD1951A58E64676 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -150,6 +150,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 58G5D9S7DZ;
 				INFOPLIST_FILE = TingeePay/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -167,6 +168,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 58G5D9S7DZ;
 				INFOPLIST_FILE = TingeePay/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (

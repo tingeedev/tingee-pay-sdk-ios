@@ -88,8 +88,10 @@ final class PaymentViewModel {
     var onLoading: ((Bool) -> Void)?
     
     // MARK: - Inputs
-    func processPayment(amountText: String?) {
+    func processPayment(amountText: String?, expireText: String?, descText: String?) {
         let trimmedAmount = amountText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let expireInMinute = Int(expireText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "30") ?? 30
+        let description = descText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Thanh toán đơn hàng App"
         
         guard let amount = Int(trimmedAmount), amount > 0 else {
             onShowError?("Vui lòng nhập số tiền thanh toán hợp lệ (lớn hơn 0).")
@@ -103,7 +105,8 @@ final class PaymentViewModel {
             merchantId: 01,
             orderId: "INV\(Int(Date().timeIntervalSince1970))",
             amount: amount,
-            description: "Thanh toán đơn hàng App",
+            expireInMinute: expireInMinute,
+            description: description,
             orderInfo: "Đơn hàng từ App Mobile",
             bankBin: "970436",
             customerInfo: "Nguyen Van A",
@@ -229,6 +232,20 @@ final class ViewController: UIViewController {
     private let titleLabel = UILabel()
     private let amountLabel = UILabel()
     private let amountTextField = UITextField()
+    
+    private let expireLabel = UILabel()
+    private let expireTextField = UITextField()
+    
+    private let descLabel = UILabel()
+    private let descTextField = UITextField()
+    
+    private let inputStackView = UIStackView()
+    private let styleSegmentedControl = UISegmentedControl(items: ["Bottom Sheet", "Full Screen"])
+    
+    private let colorLabel = UILabel()
+    private let colorTextField = UITextField()
+    private let colorPreviewView = UIView()
+    
     private let payButton = UIButton(type: .system)
     
     private let statusTitleLabel = UILabel()
@@ -271,13 +288,89 @@ final class ViewController: UIViewController {
         amountLabel.textColor = .secondaryLabel
         amountLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        amountTextField.placeholder = "VD: 50000"
+        amountTextField.placeholder = "50000"
         amountTextField.keyboardType = .numberPad
         amountTextField.borderStyle = .roundedRect
-        amountTextField.font = .systemFont(ofSize: 24, weight: .semibold)
-        amountTextField.textAlignment = .right
+        amountTextField.font = .systemFont(ofSize: 16, weight: .semibold)
         amountTextField.text = "50000"
         amountTextField.translatesAutoresizingMaskIntoConstraints = false
+        
+        expireLabel.text = "Thời hạn (phút)"
+        expireLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        expireLabel.textColor = .secondaryLabel
+        expireLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        expireTextField.placeholder = "30"
+        expireTextField.keyboardType = .numberPad
+        expireTextField.borderStyle = .roundedRect
+        expireTextField.font = .systemFont(ofSize: 16, weight: .semibold)
+        expireTextField.text = "30"
+        expireTextField.translatesAutoresizingMaskIntoConstraints = false
+        
+        descLabel.text = "Mô tả"
+        descLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        descLabel.textColor = .secondaryLabel
+        descLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        descTextField.placeholder = "Thanh toan don hang..."
+        descTextField.borderStyle = .roundedRect
+        descTextField.font = .systemFont(ofSize: 16, weight: .semibold)
+        descTextField.text = "Thanh toan don hang test SDK"
+        descTextField.translatesAutoresizingMaskIntoConstraints = false
+        
+        inputStackView.axis = .vertical
+        inputStackView.distribution = .fill
+        inputStackView.spacing = 16
+        inputStackView.translatesAutoresizingMaskIntoConstraints = false
+        
+        let amountStack = UIStackView(arrangedSubviews: [amountLabel, amountTextField])
+        amountStack.axis = .vertical
+        amountStack.spacing = 8
+        
+        let expireStack = UIStackView(arrangedSubviews: [expireLabel, expireTextField])
+        expireStack.axis = .vertical
+        expireStack.spacing = 8
+        
+        let descStack = UIStackView(arrangedSubviews: [descLabel, descTextField])
+        descStack.axis = .vertical
+        descStack.spacing = 8
+        
+        colorLabel.text = "Màu sắc chủ đạo (Mã HEX)"
+        colorLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        colorLabel.textColor = .secondaryLabel
+        colorLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        colorTextField.placeholder = "VD: #ff0000"
+        colorTextField.borderStyle = .roundedRect
+        colorTextField.font = .systemFont(ofSize: 16, weight: .semibold)
+        colorTextField.text = ""
+        colorTextField.translatesAutoresizingMaskIntoConstraints = false
+        colorTextField.addTarget(self, action: #selector(colorTextChanged), for: .editingChanged)
+        
+        colorPreviewView.frame = CGRect(x: 0, y: 0, width: 24, height: 24)
+        colorPreviewView.layer.cornerRadius = 12
+        colorPreviewView.layer.borderWidth = 1
+        colorPreviewView.layer.borderColor = UIColor.separator.cgColor
+        colorPreviewView.backgroundColor = .clear
+        
+        let rightViewContainer = UIView(frame: CGRect(x: 0, y: 0, width: 40, height: 24))
+        rightViewContainer.addSubview(colorPreviewView)
+        colorPreviewView.center = rightViewContainer.center
+        
+        colorTextField.rightView = rightViewContainer
+        colorTextField.rightViewMode = .always
+        
+        let colorStack = UIStackView(arrangedSubviews: [colorLabel, colorTextField])
+        colorStack.axis = .vertical
+        colorStack.spacing = 8
+        
+        inputStackView.addArrangedSubview(amountStack)
+        inputStackView.addArrangedSubview(expireStack)
+        inputStackView.addArrangedSubview(descStack)
+        inputStackView.addArrangedSubview(colorStack)
+        
+        styleSegmentedControl.selectedSegmentIndex = 0
+        styleSegmentedControl.translatesAutoresizingMaskIntoConstraints = false
         
         payButton.setTitle("Thanh toán", for: .normal)
         payButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .bold)
@@ -300,8 +393,8 @@ final class ViewController: UIViewController {
         
         view.addSubview(cardView)
         cardView.addSubview(titleLabel)
-        cardView.addSubview(amountLabel)
-        cardView.addSubview(amountTextField)
+        cardView.addSubview(inputStackView)
+        cardView.addSubview(styleSegmentedControl)
         cardView.addSubview(payButton)
         cardView.addSubview(statusTitleLabel)
         cardView.addSubview(statusValueLabel)
@@ -317,16 +410,16 @@ final class ViewController: UIViewController {
             titleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
             titleLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
             
-            amountLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 24),
-            amountLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 20),
-            amountLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -20),
+            inputStackView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 24),
+            inputStackView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
+            inputStackView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
             
-            amountTextField.topAnchor.constraint(equalTo: amountLabel.bottomAnchor, constant: 8),
-            amountTextField.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 20),
-            amountTextField.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -20),
-            amountTextField.heightAnchor.constraint(equalToConstant: 56),
+            styleSegmentedControl.topAnchor.constraint(equalTo: inputStackView.bottomAnchor, constant: 24),
+            styleSegmentedControl.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 20),
+            styleSegmentedControl.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -20),
+            styleSegmentedControl.heightAnchor.constraint(equalToConstant: 40),
             
-            payButton.topAnchor.constraint(equalTo: amountTextField.bottomAnchor, constant: 32),
+            payButton.topAnchor.constraint(equalTo: styleSegmentedControl.bottomAnchor, constant: 24),
             payButton.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 20),
             payButton.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -20),
             payButton.heightAnchor.constraint(equalToConstant: 56),
@@ -357,19 +450,38 @@ final class ViewController: UIViewController {
         
         viewModel.onPresentSDK = { [weak self] checkoutUrlString in
             guard let self = self, let url = URL(string: checkoutUrlString) else { return }
+            let style: TingeePayPresentationStyle = self.styleSegmentedControl.selectedSegmentIndex == 0 ? .bottomSheet : .fullScreen
+            
+            let customColor = self.colorTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let selectedColor: String? = (customColor?.isEmpty == false) ? customColor : nil
+            
             TingeePay.presentCheckout(
                 from: self,
                 checkoutUrl: url,
-                style: .bottomSheet,
+                style: style,
+                themeColor: selectedColor,
                 delegate: self
             )
         }
     }
     
     // MARK: - Actions
+    @objc private func colorTextChanged() {
+        let hex = colorTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if hex.isEmpty {
+            colorPreviewView.backgroundColor = .clear
+            return
+        }
+        colorPreviewView.backgroundColor = UIColor(hexString: hex) ?? .clear
+    }
+    
     @objc private func handlePaymentTapped() {
         dismissKeyboard()
-        viewModel.processPayment(amountText: amountTextField.text)
+        viewModel.processPayment(
+            amountText: amountTextField.text,
+            expireText: expireTextField.text,
+            descText: descTextField.text
+        )
     }
     
     @objc private func dismissKeyboard() {
@@ -423,5 +535,35 @@ extension ViewController: TingeePayCheckoutDelegate {
     
     func tingeePayCheckoutDidFail(with error: Error) {
         print("⚠️ [Client App] SDK báo lỗi nội bộ: \(error.localizedDescription)")
+    }
+}
+
+// MARK: - UIColor Extension cho HEX
+extension UIColor {
+    convenience init?(hexString: String) {
+        var chars = Array(hexString.hasPrefix("#") ? hexString.dropFirst() : hexString[...])
+        switch chars.count {
+        case 3: chars = chars.flatMap { [$0, $0] }
+        case 6: break
+        case 8: break
+        default: return nil
+        }
+        guard let hexValue = UInt64(String(chars), radix: 16) else { return nil }
+        let r, g, b, a: CGFloat
+        switch chars.count {
+        case 6:
+            r = CGFloat((hexValue & 0xFF0000) >> 16) / 255.0
+            g = CGFloat((hexValue & 0x00FF00) >> 8) / 255.0
+            b = CGFloat(hexValue & 0x0000FF) / 255.0
+            a = 1.0
+        case 8:
+            r = CGFloat((hexValue & 0xFF000000) >> 24) / 255.0
+            g = CGFloat((hexValue & 0x00FF0000) >> 16) / 255.0
+            b = CGFloat((hexValue & 0x0000FF00) >> 8) / 255.0
+            a = CGFloat(hexValue & 0x000000FF) / 255.0
+        default:
+            return nil
+        }
+        self.init(red: r, green: g, blue: b, alpha: a)
     }
 }

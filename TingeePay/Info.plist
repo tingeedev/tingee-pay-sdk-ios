@@ -37,5 +37,7 @@
 	</dict>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Ứng dụng cần quyền lưu ảnh để tải mã QR thanh toán về máy.</string>
 </dict>
 </plist>

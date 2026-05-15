@@ -4,7 +4,7 @@ import WebKit
 public class TingeePayCheckoutViewController: UIViewController, WKNavigationDelegate {
     
     private let checkoutUrl: URL
-//    private let returnUrl: String
+    private let themeColor: String?
     
     public weak var delegate: TingeePayCheckoutDelegate?
     
@@ -12,8 +12,9 @@ public class TingeePayCheckoutViewController: UIViewController, WKNavigationDele
     private var activityIndicator: UIActivityIndicatorView!
     private var errorLabel: UILabel!
     
-    public init(checkoutUrl: URL) {
+    public init(checkoutUrl: URL, themeColor: String? = nil) {
         self.checkoutUrl = checkoutUrl
+        self.themeColor = themeColor
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -84,6 +85,9 @@ public class TingeePayCheckoutViewController: UIViewController, WKNavigationDele
                 } else if (url.startsWith('data:')) {
                     window.webkit.messageHandlers.tingeeObserver.postMessage({'event': 'DOWNLOAD_FILE', 'dataUrl': url, 'filename': filename});
                     return;
+                } else if (url.startsWith('http')) {
+                    window.webkit.messageHandlers.tingeeObserver.postMessage({'event': 'DOWNLOAD_FILE', 'dataUrl': url, 'filename': filename});
+                    return;
                 }
             }
             originalClick.apply(this, arguments);
@@ -93,7 +97,7 @@ public class TingeePayCheckoutViewController: UIViewController, WKNavigationDele
             var a = e.target.closest('a');
             if (a && a.hasAttribute('download')) {
                 var url = a.href;
-                if (url.startsWith('blob:') || url.startsWith('data:')) {
+                if (url.startsWith('blob:') || url.startsWith('data:') || url.startsWith('http')) {
                     e.preventDefault();
                     e.stopPropagation();
                     a.click(); // Kích hoạt prototype.click đã bẫy ở trên
@@ -104,6 +108,22 @@ public class TingeePayCheckoutViewController: UIViewController, WKNavigationDele
         
         let userScript = WKUserScript(source: jsSource, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
         userController.addUserScript(userScript)
+        
+        // Tiêm cấu hình ở Document Start (0ms Flicker)
+        // isEmbedded: Ẩn Header/Footer
+        // immediateResult: Bắn event ngay lập tức khi thanh toán xong
+        var themeString = ""
+        if let color = themeColor {
+            themeString = ", theme: { primaryColor: '\(color)' }"
+        }
+        
+        let configScript = WKUserScript(
+            source: "window.__TINGEE_CONFIG__ = { isEmbedded: true, immediateResult: false\(themeString) };",
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        userController.addUserScript(configScript)
+        
         userController.add(self, name: "tingeeObserver")
         userController.add(self, name: "TingeeSDKBridge")
         
@@ -211,10 +231,10 @@ public class TingeePayCheckoutViewController: UIViewController, WKNavigationDele
                 }
             } else if !["about", "blob"].contains(scheme) {
                 // App URL Scheme (vd: bidvsmartbanking://, icb://)
-                print("📱 [Tingee Web Event] Phát hiện App URL Scheme: \(scheme) -> Thử mở App bên ngoài...")
+                print("[Tingee Web Event] Phát hiện App URL Scheme: \(scheme) -> Thử mở App bên ngoài...")
                 DispatchQueue.main.async {
                     UIApplication.shared.open(url, options: [:]) { [weak self] success in
-                        print("📱 [Tingee Web Event] Gọi UIApplication.open: \(success ? "Thành công" : "Thất bại")")
+                        print("[Tingee Web Event] Gọi UIApplication.open: \(success ? "Thành công" : "Thất bại")")
                         if !success {
                             // Hiện thông báo và reload lại trang
                             self?.showAppNotInstalledAlert()
@@ -231,7 +251,17 @@ public class TingeePayCheckoutViewController: UIViewController, WKNavigationDele
     }
     
     public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        print("❌ [Tingee Web Event] didFailProvisionalNavigation: \(error.localizedDescription)")
+        print("[Tingee Web Event] didFailProvisionalNavigation: \(error.localizedDescription)")
+    }
+    
+    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        webView.evaluateJavaScript("if (typeof window.setTingeeEmbedded === 'function') { window.setTingeeEmbedded(true); }") { _, error in
+            if let error = error {
+                print("[Tingee Web Event] Không thể gọi setTingeeEmbedded: \(error.localizedDescription)")
+            } else {
+                print("[Tingee Web Event] Đã gọi window.setTingeeEmbedded(true)")
+            }
+        }
     }
 }
 
@@ -285,9 +315,11 @@ extension TingeePayCheckoutViewController: WKScriptMessageHandler {
                         errorCode: payload["errorCode"] as? String,
                         errorMessage: payload["errorMessage"] as? String
                     )
-                    delegate?.tingeePayCheckoutDidFinish(with: result)
+                    let delegate = self.delegate
                     print("🔔 [Tingee Web Event] Kết quả thanh toán: \(statusStr) - \(result.transactionId ?? "") - \(result.errorMessage ?? "")")
-                    dismiss(animated: true)
+                    self.dismiss(animated: true) {
+                        delegate?.tingeePayCheckoutDidFinish(with: result)
+                    }
                 }
             } else if type == "OPEN_URL" || type == "OPEN_APP", let payload = json["data"] as? [String: Any], let urlString = payload["url"] as? String, let url = URL(string: urlString) {
                 // Đón đầu trường hợp Tingee gửi link qua Bridge thay vì redirect!
@@ -326,10 +358,33 @@ extension TingeePayCheckoutViewController: WKScriptMessageHandler {
                 }
             } else if event == "DOWNLOAD_FILE" {
                 if let dataUrl = dict["dataUrl"] as? String, let filename = dict["filename"] as? String {
-                    self.saveBase64ToPhotos(dataUrl: dataUrl, filename: filename)
+                    if dataUrl.hasPrefix("http") {
+                        self.downloadAndSaveImage(urlString: dataUrl)
+                    } else {
+                        self.saveBase64ToPhotos(dataUrl: dataUrl, filename: filename)
+                    }
                 }
             }
         }
+    }
+    
+    private func downloadAndSaveImage(urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            guard let self = self, let data = data, let image = UIImage(data: data) else {
+                DispatchQueue.main.async {
+                    let alert = UIAlertController(title: "Lỗi", message: "Không thể tải ảnh", preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "Đóng", style: .default))
+                    self?.present(alert, animated: true)
+                }
+                return
+            }
+            
+            DispatchQueue.main.async {
+                UIImageWriteToSavedPhotosAlbum(image, self, #selector(self.image(_:didFinishSavingWithError:contextInfo:)), nil)
+            }
+        }.resume()
     }
     
     private func saveBase64ToPhotos(dataUrl: String, filename: String) {
