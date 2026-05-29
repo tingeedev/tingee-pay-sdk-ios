@@ -37,6 +37,17 @@ Nếu bạn muốn tích hợp SDK dưới dạng thư viện nhị phân đã b
 
 ---
 
+### XCFramework (Tích hợp thủ công)
+
+Nếu bạn muốn tích hợp SDK dưới dạng thư viện nhị phân đã biên dịch sẵn:
+
+1. Tải về thư mục `TingeePaySDK.xcframework`.
+2. Kéo và thả thư mục `TingeePaySDK.xcframework` vào dự án Xcode của bạn (chọn **Copy items if needed** và **Create groups**).
+3. Chọn target ứng dụng của bạn, đi tới tab **General**.
+4. Tại mục **Frameworks, Libraries, and Embedded Content**, tìm `TingeePaySDK.xcframework` và cấu hình là **Embed & Sign**.
+
+---
+
 ## Cấu hình
 
 Để SDK hoạt động trơn tru (đặc biệt là tính năng Tải mã QR), bạn **bắt buộc** phải cấu hình file `Info.plist` của ứng dụng.
