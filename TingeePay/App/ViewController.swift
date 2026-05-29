@@ -19,9 +19,9 @@ enum TingeeEnvironment {
 /// Trong ứng dụng Production thực tế: KHÔNG BAO GIỜ lưu `secret` trong App để tránh rò rỉ bảo mật.
 /// Toàn bộ logic tạo Signature nên được xử lý trên Backend của Merchant.
 enum TingeeAppConfig {
-    static let clientId = "74972a04e7dd7eeaf2c30868cdb5fd6a"
-    static let secret = "htIQdfgxq114HvfBKb6gP+WXegFv377SAgktTd4V9Uw="
-    static let environment: TingeeEnvironment = .sandbox
+    static var clientId = "74972a04e7dd7eeaf2c30868cdb5fd6a"
+    static var secret = "htIQdfgxq114HvfBKb6gP+WXegFv377SAgktTd4V9Uw="
+    static var environment: TingeeEnvironment = .sandbox
 }
 
 // MARK: - Request Model (Dành cho App Demo giả lập Backend)
@@ -88,7 +88,7 @@ final class PaymentViewModel {
     var onLoading: ((Bool) -> Void)?
     
     // MARK: - Inputs
-    func processPayment(amountText: String?, expireText: String?, descText: String?) {
+    func processPayment(amountText: String?, expireText: String?, descText: String?, vaAccountText: String?) {
         let trimmedAmount = amountText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let expireInMinute = Int(expireText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "30") ?? 30
         let description = descText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "Thanh toán đơn hàng App"
@@ -110,31 +110,31 @@ final class PaymentViewModel {
             orderInfo: "Đơn hàng từ App Mobile",
             bankBin: "970436",
             customerInfo: "Nguyen Van A",
-            vaAccountNumber: "VQRQAAUNF0356",
+            vaAccountNumber: vaAccountText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? vaAccountText!.trimmingCharacters(in: .whitespacesAndNewlines) : "VQRQAAUNF0356",
             returnUrl: "tingeemerchant://return",
             partnerCustomerId: "CUS_001"
         )
         
         // 2. Giả lập Backend gọi API lên Tingee để lấy checkoutUrl
-        simulateBackendCreateLink(request: request) { [weak self] checkoutUrl in
+        simulateBackendCreateLink(request: request) { [weak self] checkoutUrl, errorMessage in
             DispatchQueue.main.async {
                 self?.onLoading?(false)
                 if let url = checkoutUrl {
                     // 3. Trả checkoutUrl về cho App để mở SDK Tingee
                     self?.onPresentSDK?(url)
                 } else {
-                    self?.onShowError?("Không thể tạo link thanh toán từ Backend giả lập.")
+                    self?.onShowError?(errorMessage ?? "Không thể tạo link thanh toán từ Backend giả lập.")
                 }
             }
         }
     }
     
     // MARK: - Private Helpers
-    private func simulateBackendCreateLink(request: TingeePaymentLinkRequest, completion: @escaping (String?) -> Void) {
+    private func simulateBackendCreateLink(request: TingeePaymentLinkRequest, completion: @escaping (String?, String?) -> Void) {
         let (signature, timestamp) = generateMockSignature(for: request)
         
         guard let url = URL(string: TingeeAppConfig.environment.baseURL + "/v1/payment-gateway/create-link") else {
-            completion(nil)
+            completion(nil, "URL không hợp lệ")
             return
         }
         
@@ -182,18 +182,19 @@ final class PaymentViewModel {
             // --------------------
             
             guard let data = data, error == nil else {
-                completion(nil)
+                completion(nil, error?.localizedDescription ?? "Lỗi kết nối mạng")
                 return
             }
             do {
                 let apiResponse = try JSONDecoder().decode(TingeePaymentLinkResponse.self, from: data)
                 if apiResponse.code == "00" {
-                    completion(apiResponse.data)
+                    completion(apiResponse.data, nil)
                 } else {
-                    completion(nil)
+                    completion(nil, apiResponse.message ?? "Lỗi từ server Tingee: Mã lỗi \(apiResponse.code ?? "Unknown")")
                 }
             } catch {
-                completion(nil)
+                let jsonStr = String(data: data, encoding: .utf8) ?? ""
+                completion(nil, "Lỗi phản hồi API: \(error.localizedDescription)\n\(jsonStr)")
             }
         }.resume()
     }
@@ -228,10 +229,25 @@ final class PaymentViewModel {
 final class ViewController: UIViewController {
     
     // MARK: - UI Components
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
+    
     private let cardView = UIView()
     private let titleLabel = UILabel()
+    
+    private let envLabel = UILabel()
+    private let envSegmentedControl = UISegmentedControl(items: ["UAT (Sandbox)", "Production"])
+    
+    private let clientIdLabel = UILabel()
+    private let clientIdTextField = UITextField()
+    
+    private let secretLabel = UILabel()
+    private let secretTextField = UITextField()
     private let amountLabel = UILabel()
     private let amountTextField = UITextField()
+    
+    private let vaAccountLabel = UILabel()
+    private let vaAccountTextField = UITextField()
     
     private let expireLabel = UILabel()
     private let expireTextField = UITextField()
@@ -323,6 +339,63 @@ final class ViewController: UIViewController {
         inputStackView.spacing = 16
         inputStackView.translatesAutoresizingMaskIntoConstraints = false
         
+        envLabel.text = "Môi trường (Environment)"
+        envLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        envLabel.textColor = .secondaryLabel
+        envLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        envSegmentedControl.selectedSegmentIndex = 0
+        envSegmentedControl.translatesAutoresizingMaskIntoConstraints = false
+        
+        clientIdLabel.text = "Client ID"
+        clientIdLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        clientIdLabel.textColor = .secondaryLabel
+        clientIdLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        clientIdTextField.placeholder = "Nhập Client ID..."
+        clientIdTextField.borderStyle = .roundedRect
+        clientIdTextField.font = .systemFont(ofSize: 14, weight: .regular)
+        clientIdTextField.text = TingeeAppConfig.clientId
+        clientIdTextField.translatesAutoresizingMaskIntoConstraints = false
+        
+        secretLabel.text = "Secret Token"
+        secretLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        secretLabel.textColor = .secondaryLabel
+        secretLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        secretTextField.placeholder = "Nhập Secret Token..."
+        secretTextField.borderStyle = .roundedRect
+        secretTextField.font = .systemFont(ofSize: 14, weight: .regular)
+        secretTextField.text = TingeeAppConfig.secret
+        secretTextField.translatesAutoresizingMaskIntoConstraints = false
+
+        let envStack = UIStackView(arrangedSubviews: [envLabel, envSegmentedControl])
+        envStack.axis = .vertical
+        envStack.spacing = 8
+        
+        let clientStack = UIStackView(arrangedSubviews: [clientIdLabel, clientIdTextField])
+        clientStack.axis = .vertical
+        clientStack.spacing = 8
+        
+        let secretStack = UIStackView(arrangedSubviews: [secretLabel, secretTextField])
+        secretStack.axis = .vertical
+        secretStack.spacing = 8
+        
+        vaAccountLabel.text = "VA Account Number"
+        vaAccountLabel.font = .systemFont(ofSize: 13, weight: .medium)
+        vaAccountLabel.textColor = .secondaryLabel
+        vaAccountLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        vaAccountTextField.placeholder = "Nhập VA Account Number..."
+        vaAccountTextField.borderStyle = .roundedRect
+        vaAccountTextField.font = .systemFont(ofSize: 14, weight: .regular)
+        vaAccountTextField.text = "VQRQAAUNF0356"
+        vaAccountTextField.translatesAutoresizingMaskIntoConstraints = false
+        
+        let vaAccountStack = UIStackView(arrangedSubviews: [vaAccountLabel, vaAccountTextField])
+        vaAccountStack.axis = .vertical
+        vaAccountStack.spacing = 8
+        
         let amountStack = UIStackView(arrangedSubviews: [amountLabel, amountTextField])
         amountStack.axis = .vertical
         amountStack.spacing = 8
@@ -364,6 +437,10 @@ final class ViewController: UIViewController {
         colorStack.axis = .vertical
         colorStack.spacing = 8
         
+        inputStackView.addArrangedSubview(envStack)
+        inputStackView.addArrangedSubview(clientStack)
+        inputStackView.addArrangedSubview(secretStack)
+        inputStackView.addArrangedSubview(vaAccountStack)
         inputStackView.addArrangedSubview(amountStack)
         inputStackView.addArrangedSubview(expireStack)
         inputStackView.addArrangedSubview(descStack)
@@ -391,7 +468,12 @@ final class ViewController: UIViewController {
         statusValueLabel.numberOfLines = 0
         statusValueLabel.translatesAutoresizingMaskIntoConstraints = false
         
-        view.addSubview(cardView)
+        view.addSubview(scrollView)
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(contentView)
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        
+        contentView.addSubview(cardView)
         cardView.addSubview(titleLabel)
         cardView.addSubview(inputStackView)
         cardView.addSubview(styleSegmentedControl)
@@ -402,9 +484,20 @@ final class ViewController: UIViewController {
     
     private func setupConstraints() {
         NSLayoutConstraint.activate([
-            cardView.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -40),
-            cardView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            cardView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            
+            cardView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 20),
+            cardView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
+            cardView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
+            cardView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
             
             titleLabel.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 24),
             titleLabel.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 16),
@@ -477,10 +570,16 @@ final class ViewController: UIViewController {
     
     @objc private func handlePaymentTapped() {
         dismissKeyboard()
+        
+        TingeeAppConfig.environment = envSegmentedControl.selectedSegmentIndex == 0 ? .sandbox : .production
+        TingeeAppConfig.clientId = clientIdTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        TingeeAppConfig.secret = secretTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        
         viewModel.processPayment(
             amountText: amountTextField.text,
             expireText: expireTextField.text,
-            descText: descTextField.text
+            descText: descTextField.text,
+            vaAccountText: vaAccountTextField.text
         )
     }
     

@@ -18,6 +18,17 @@
 
 ---
 
+### XCFramework (Tích hợp thủ công)
+
+Nếu bạn muốn tích hợp SDK dưới dạng thư viện nhị phân đã biên dịch sẵn:
+
+1. Tải về thư mục `TingeePaySDK.xcframework`.
+2. Kéo và thả thư mục `TingeePaySDK.xcframework` vào dự án Xcode của bạn (chọn **Copy items if needed** và **Create groups**).
+3. Chọn target ứng dụng của bạn, đi tới tab **General**.
+4. Tại mục **Frameworks, Libraries, and Embedded Content**, tìm `TingeePaySDK.xcframework` và cấu hình là **Embed & Sign**.
+
+---
+
 ## Cấu hình
 
 Để SDK hoạt động trơn tru (đặc biệt là tính năng Tải mã QR), bạn **bắt buộc** phải cấu hình file `Info.plist` của ứng dụng.
@@ -32,9 +43,6 @@ Mở `Info.plist` dưới dạng Source Code và thêm cấu hình sau để xin
 ---
 
 ## Bắt đầu nhanh
-
-> **⚠️ LƯU Ý BẢO MẬT:** 
-> Ứng dụng Mobile **KHÔNG ĐƯỢC** lưu trữ `secretKey` hoặc tự gọi API tạo link thanh toán của Tingee. Việc tạo chữ ký (Signature) và gọi API tạo đơn hàng phải được thực hiện hoàn toàn trên Backend của bạn. Backend sau khi tạo đơn thành công sẽ trả về `checkoutUrl` cho ứng dụng Mobile.
 
 Tại ViewController nơi bạn muốn gọi thanh toán, import SDK:
 
@@ -55,11 +63,94 @@ class CheckoutViewController: UIViewController {
         )
     }
 }
+
+
 ```
 
 ---
 
-## Lắng nghe kết quả
+## Dành cho SwiftUI
+
+Đối với SwiftUI, cách tốt nhất là **khai báo một lần** (viết một wrapper `UIViewControllerRepresentable`) để tái sử dụng toàn bộ dự án thay vì xử lý rời rạc.
+
+```swift
+import SwiftUI
+import TingeePaySDK
+
+struct TingeePayView: UIViewControllerRepresentable {
+    let checkoutUrl: URL
+    var themeColor: String? = nil
+    var style: TingeePayStyle = .fullSceen
+    var onFinished: ((TingeePaymentResult) -> Void)?
+    var onCancelled: (() -> Void)?
+
+    class Coordinator: NSObject, TingeePayCheckoutDelegate {
+        var parent: TingeePayView
+        
+        init(parent: TingeePayView) {
+            self.parent = parent
+        }
+        
+        func tingeePayCheckoutDidFinish(with result: TingeePaymentResult) {
+            parent.onFinished?(result)
+        }
+        
+        func tingeePayCheckoutDidCancel() {
+            parent.onCancelled?()
+        }
+        
+        func tingeePayCheckoutDidFail(with error: Error) {
+            print("Lỗi tải trang thanh toán: \(error.localizedDescription)")
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+    
+    func makeUIViewController(context: Context) -> TingeePayCheckoutViewController {
+        let vc = TingeePayCheckoutViewController(checkoutUrl: checkoutUrl, themeColor: themeColor, style: style)
+        vc.delegate = context.coordinator
+        return vc
+    }
+    
+    func updateUIViewController(_ uiViewController: TingeePayCheckoutViewController, context: Context) {}
+}
+```
+
+Cách dùng trong file giao diện của bạn:
+
+```swift
+struct ContentView: View {
+    @State private var showPayment = false
+    let checkoutUrl = URL(string: "https://pay.tingee.vn/your-order-id")!
+    
+    var body: some View {
+        Button("Thanh toán Tingee") {
+            showPayment = true
+        }
+        .sheet(isPresented: $showPayment) {
+            TingeePayView(
+                checkoutUrl: checkoutUrl, 
+                themeColor: "#FF5733",
+                style: .fullScreen, // Hoặc .bottomSheet
+                onFinished: { result in
+                    print("Kết quả: \(result.status.rawValue)")
+                    showPayment = false
+                },
+                onCancelled: {
+                    print("Đã huỷ")
+                    showPayment = false
+                }
+            )
+        }
+    }
+}
+```
+
+---
+
+## Lắng nghe kết quả (dành cho UIKit)
 
 Kế thừa protocol `TingeePayCheckoutDelegate` để nhận các sự kiện:
 
@@ -74,14 +165,14 @@ extension CheckoutViewController: TingeePayCheckoutDelegate {
         switch result.status {
         case .success:
             print("Thanh toán thành công!")
-        case .failed, .error:
+        case .failed,:
             print("Lỗi thanh toán: \(result.errorMessage ?? "")")
         case .cancelled:
             print("Giao dịch đã bị huỷ.")
         case .expired:
             print("Đơn hàng đã hết hạn thanh toán.")
-        case .unknown:
-            print("Trạng thái không xác định.")
+        case .error:
+            print("Lỗi hệ thống.")
         }
     }
     
@@ -107,11 +198,8 @@ extension CheckoutViewController: TingeePayCheckoutDelegate {
 |---|---|---|
 | `status` | `TingeePaymentStatus` | Trạng thái cuối cùng của giao dịch. |
 | `orderId` | `String?` | Mã đơn hàng (Mã mà hệ thống của bạn gửi cho Tingee). |
-| `transactionId` | `String?` | Mã giao dịch phía Tingee. |
-| `errorCode` | `String?` | Mã lỗi (nếu có). |
-| `errorMessage` | `String?` | Thông báo lỗi chi tiết (nếu có). |
 
-> **`TingeePaymentStatus`** bao gồm: `.success`, `.failed`, `.cancelled`, `.expired`, `.error`, `.unknown`.
+> **`TingeePaymentStatus`** bao gồm: `.success`, `.failed`, `.cancelled`, `.expired`, `.error`.
 
 ---
 
@@ -124,10 +212,3 @@ extension CheckoutViewController: TingeePayCheckoutDelegate {
 - SDK Mobile tự động chuyển môi trường dựa vào URL. Nếu `checkoutUrl` bắt đầu bằng URL Sandbox của Tingee, SDK sẽ tự hiểu và hiển thị giao diện Sandbox.
 
 ---
-
-## Xem thêm
-
-- [CHANGELOG](./CHANGELOG.md)
-- [Tài liệu Tingee Open API](https://open-api.tingee.vn)
-- [Tài liệu Tingee Developer](https://developers.tingee.vn)
-- [Trang chủ Tingee](https://tingee.vn)

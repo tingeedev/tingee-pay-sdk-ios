@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1F7A752FB39EDEA07BE4FB5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9F9A3F5C5313BCD9DDD02118 /* Assets.xcassets */; };
 		484DB4104A2FB221537B8470 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F61E1E6CE049D5008058279 /* AppDelegate.swift */; };
 		4E19DA831A91C45DE79BF482 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36643B4D43FA037B7A3CF717 /* SceneDelegate.swift */; };
 		AAAAEBB52433437563BAF04A /* TingeePaySDK in Frameworks */ = {isa = PBXBuildFile; productRef = 763FA7520B7C00318AD7673A /* TingeePaySDK */; };
@@ -18,6 +19,7 @@
 		7F61E1E6CE049D5008058279 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		9DAA5A65A335B4597D86AC26 /* tingee-pay-sdk */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "tingee-pay-sdk"; path = .; sourceTree = SOURCE_ROOT; };
 		9DF195C10A9A55D425B97045 /* TingeePay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TingeePay.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9F9A3F5C5313BCD9DDD02118 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CC32D57D3DD1951A58E64676 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -36,6 +38,7 @@
 		24749BE0B0EB91AE8C1E1F05 /* Resource */ = {
 			isa = PBXGroup;
 			children = (
+				9F9A3F5C5313BCD9DDD02118 /* Assets.xcassets */,
 			);
 			name = Resource;
 			path = TingeePay/Resource;
@@ -86,6 +89,7 @@
 			buildConfigurationList = C69B74DDAC6F336B42816826 /* Build configuration list for PBXNativeTarget "TingeePay" */;
 			buildPhases = (
 				A50F6CB78D403D768256F625 /* Sources */,
+				8F0C08177306770BA843C11F /* Resources */,
 				005D0FA9A2F70A1AC5BCCB34 /* Frameworks */,
 			);
 			buildRules = (
@@ -131,6 +135,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		8F0C08177306770BA843C11F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1F7A752FB39EDEA07BE4FB5B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		A50F6CB78D403D768256F625 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -150,6 +165,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 101;
 				DEVELOPMENT_TEAM = 58G5D9S7DZ;
 				INFOPLIST_FILE = TingeePay/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -157,7 +173,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = vn.tingee.TingeePay;
+				MARKETING_VERSION = 1.6.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.heno.app.tingee.merchant;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -168,6 +185,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 101;
 				DEVELOPMENT_TEAM = 58G5D9S7DZ;
 				INFOPLIST_FILE = TingeePay/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -175,7 +193,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = vn.tingee.TingeePay;
+				MARKETING_VERSION = 1.6.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.heno.app.tingee.merchant;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
